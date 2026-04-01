@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namratha's Electricity Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #1a5fb4;
+            --accent-color: #3498db;
+            --bg-color: #f8fafc;
+            --white: #ffffff;
+            --text: #1e293b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            color: var(--text);
+        }
+
+        /* Fixed Navigation */
+        nav {
+            background: var(--primary-color);
+            padding: 1rem 10%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-logo { 
+            color: white; 
+            font-size: 1.2rem; 
+            font-weight: bold; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px;
+            text-decoration: none;
+        }
+
+        .nav-links a {
+            color: #bdc3c7;
+            text-decoration: none;
+            margin-left: 20px;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+        .nav-links a:hover { color: white; }
+        .nav-links .active { color: white; border-bottom: 2px solid white; padding-bottom: 5px; }
+
+        /* Main Container */
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        
+        .welcome-header { text-align: center; margin-bottom: 30px; }
+        .welcome-header h1 { color: var(--primary-color); margin-bottom: 5px; }
+
+        /* Alert Box */
+        #usageAlert {
+            display: none;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            position: relative;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            animation: slideDown 0.4s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .alert-rise { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-drop { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+
+        .close-btn {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        /* Charts */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+        }
+
+        .card {
+            background: var(--white);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        h3 { color: var(--primary-color); margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="dashboard.html" class="nav-logo">📊 Dashboard</a>
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="login.html">Login</a>
+            <a href="dashboard.html">Dashboard</a>
+            <a href="register.html">Register</a>
+            <a href="reset_password.html">Reset Password</a> </div>
+    </nav>
+
+    <div class="container">
+        <div class="welcome-header">
+            <h1>Namratha's Electricity Expenses</h1>
+            <p>Interactive Cost Monitoring</p>
+        </div>
+
+        <div id="usageAlert">
+            <span id="alertText"></span>
+            <span class="close-btn" onclick="dismissAlert()">×</span>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <h3>Daily Usage (kWh)</h3>
+                <canvas id="dailyChart"></canvas>
+            </div>
+            <div class="card">
+                <h3>Monthly Expenses (₹)</h3>
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const UNIT_RATE = 8; 
+
+        const hours = ['6AM', '9AM', '12PM', '3PM', '6PM', '9PM'];
+        const currentHourlyData = [0.8, 1.1, 2.5, 12.5, 4.0, 1.2]; 
+        
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthlyKWh = [150, 140, 160, 210, 250, 280, 310, 300, 220, 180, 170, 190];
+
+        function checkUsageTrends(data) {
+            const latestValue = data[3]; 
+            const alertBox = document.getElementById('usageAlert');
+            const alertText = document.getElementById('alertText');
+
+            if (latestValue > 10) {
+                alertBox.style.display = 'block';
+                alertBox.className = 'alert-rise';
+                alertText.innerHTML = "⚠️ Sudden Raise Detected: Usage reached " + latestValue + " kWh!";
+            } else if (latestValue < 0.3) {
+                alertBox.style.display = 'block';
+                alertBox.className = 'alert-drop';
+                alertText.innerHTML = "📉 Sudden Drop Detected: Usage at " + latestValue + " kWh.";
+            } else {
+                alertBox.style.display = 'none';
+            }
+        }
+
+        function dismissAlert() {
+            document.getElementById('usageAlert').style.display = 'none';
+        }
+
+        checkUsageTrends(currentHourlyData);
+
+        // Daily Chart
+        new Chart(document.getElementById('dailyChart'), {
+            type: 'bar',
+            data: {
+                labels: hours,
+                datasets: [{
+                    label: 'kWh Used',
+                    data: currentHourlyData,
+                    backgroundColor: '#3498db',
+                    borderRadius: 4
+                }]
+            }
+        });
+
+        // Monthly Chart
+        new Chart(document.getElementById('monthlyChart'), {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Total Bill (₹)',
+                    data: monthlyKWh.map(k => k * UNIT_RATE),
+                    borderColor: '#e67e22',
+                    backgroundColor: 'rgba(230, 126, 34, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            }
+        });
+    </script>
+</body>
+</html>
